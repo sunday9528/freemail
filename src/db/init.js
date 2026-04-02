@@ -47,6 +47,8 @@ async function performFirstTimeSetup(db) {
     await db.prepare('SELECT 1 FROM sent_emails LIMIT 1').all();
     // 所有5个必要表都存在，执行字段迁移
     await migrateMailboxesFields(db);
+    // 确保 domains 表存在（新增功能的向后兼容迁移）
+    await migrateDomainTable(db);
     return;
   } catch (e) {
     // 有表不存在，继续初始化
@@ -59,7 +61,8 @@ async function performFirstTimeSetup(db) {
   await db.exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT, role TEXT NOT NULL DEFAULT 'user', can_send INTEGER NOT NULL DEFAULT 0, mailbox_limit INTEGER NOT NULL DEFAULT 10, created_at TEXT DEFAULT CURRENT_TIMESTAMP);");
   await db.exec("CREATE TABLE IF NOT EXISTS user_mailboxes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, mailbox_id INTEGER NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_pinned INTEGER NOT NULL DEFAULT 0, UNIQUE(user_id, mailbox_id), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY(mailbox_id) REFERENCES mailboxes(id) ON DELETE CASCADE);");
   await db.exec("CREATE TABLE IF NOT EXISTS sent_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, resend_id TEXT, from_name TEXT, from_addr TEXT NOT NULL, to_addrs TEXT NOT NULL, subject TEXT NOT NULL, html_content TEXT, text_content TEXT, status TEXT DEFAULT 'queued', scheduled_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);");
-  
+  await db.exec("CREATE TABLE IF NOT EXISTS domains (id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT NOT NULL UNIQUE, enabled INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);");
+
   // 创建索引
   await createIndexes(db);
 }
@@ -86,6 +89,8 @@ async function createIndexes(db) {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_sent_emails_resend_id ON sent_emails(resend_id);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_sent_emails_status_created ON sent_emails(status, created_at DESC);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_sent_emails_from_addr ON sent_emails(from_addr);`);
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_domains_domain ON domains(domain);`);
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_domains_enabled ON domains(enabled);`);
 }
 
 /**
@@ -114,6 +119,29 @@ async function migrateMailboxesFields(db) {
   } catch (error) {
     console.error('mailboxes 字段迁移失败:', error);
     // 不抛出异常，允许继续运行
+  }
+}
+
+/**
+ * 迁移：确保 domains 表存在（向后兼容）
+ * @param {object} db - 数据库连接对象
+ */
+async function migrateDomainTable(db) {
+  try {
+    await db.prepare('SELECT 1 FROM domains LIMIT 1').all();
+    // 表已存在，检查是否有 sort_order 列
+    try {
+      await db.prepare('SELECT sort_order FROM domains LIMIT 1').all();
+    } catch (_) {
+      await db.exec('ALTER TABLE domains ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;');
+      console.log('已添加 domains.sort_order 字段');
+    }
+  } catch (_) {
+    // 表不存在，创建它
+    await db.exec("CREATE TABLE IF NOT EXISTS domains (id INTEGER PRIMARY KEY AUTOINCREMENT, domain TEXT NOT NULL UNIQUE, enabled INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);");
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_domains_domain ON domains(domain);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_domains_enabled ON domains(enabled);`);
+    console.log('已创建 domains 表');
   }
 }
 

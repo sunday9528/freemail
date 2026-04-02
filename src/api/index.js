@@ -7,6 +7,7 @@ import { handleUsersApi } from './users.js';
 import { handleMailboxesApi } from './mailboxes.js';
 import { handleEmailsApi } from './emails.js';
 import { handleSendApi } from './send.js';
+import { handleDomainsApi } from './domains.js';
 import { getJwtPayload, errorResponse } from './helpers.js';
 
 /**
@@ -78,6 +79,10 @@ export async function handleApiRequest(request, db, mailDomains, options = {
   // 依次尝试各个 API 处理器
   let response;
 
+  // 域名管理 API
+  response = await handleDomainsApi(request, db, mailDomains, url, path, options);
+  if (response) return response;
+
   // 用户管理 API
   response = await handleUsersApi(request, db, url, path, options);
   if (response) return response;
@@ -101,3 +106,4 @@ export { handleUsersApi } from './users.js';
 export { handleMailboxesApi } from './mailboxes.js';
 export { handleEmailsApi } from './emails.js';
 export { handleSendApi } from './send.js';
+export { handleDomainsApi } from './domains.js';

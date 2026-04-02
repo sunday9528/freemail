@@ -3,7 +3,7 @@
  * @module admin
  */
 
-import { api, getUsers, createUser, updateUser, deleteUser, getUserMailboxes, assignMailbox, unassignMailbox } from './modules/admin/api.js';
+import { api, getUsers, createUser, updateUser, deleteUser, getUserMailboxes, assignMailbox, unassignMailbox, getDomains, toggleDomain, reorderDomains } from './modules/admin/api.js';
 import { formatTime, renderUserRow, renderUserList, generateSkeletonRows, renderPagination } from './modules/admin/user-list.js';
 import { fillEditForm, collectEditFormData, validateEditForm, resetEditState } from './modules/admin/user-edit.js';
 
@@ -82,7 +82,12 @@ const els = {
   confirmMessage: document.getElementById('admin-confirm-message'),
   confirmClose: document.getElementById('admin-confirm-close'),
   confirmCancel: document.getElementById('admin-confirm-cancel'),
-  confirmOk: document.getElementById('admin-confirm-ok')
+  confirmOk: document.getElementById('admin-confirm-ok'),
+
+  // 域名管理
+  domainsRefresh: document.getElementById('domains-refresh'),
+  domainsLoading: document.getElementById('domains-loading'),
+  domainsList: document.getElementById('domains-list')
 };
 
 // 自定义确认对话框
@@ -505,5 +510,167 @@ els.editDelete?.addEventListener('click', async () => {
 els.mailboxesPrevPage?.addEventListener('click', () => { if (mailboxPage > 1) { mailboxPage--; loadUserMailboxes(); }});
 els.mailboxesNextPage?.addEventListener('click', () => { const totalPages = Math.ceil(totalMailboxes / mailboxPageSize); if (mailboxPage < totalPages) { mailboxPage++; loadUserMailboxes(); }});
 
+// =================== 域名管理 ===================
+
+async function loadDomains() {
+  if (els.domainsLoading) els.domainsLoading.style.display = 'flex';
+  if (els.domainsList) els.domainsList.innerHTML = '';
+
+  try {
+    const list = await getDomains();
+    renderDomains(list);
+  } catch (e) {
+    showToast('加载域名列表失败', 'error');
+  } finally {
+    if (els.domainsLoading) els.domainsLoading.style.display = 'none';
+  }
+}
+
+function renderDomains(list) {
+  if (!els.domainsList) return;
+  if (!list || list.length === 0) {
+    els.domainsList.innerHTML = '<div class="domain-empty">暂无域名配置，请在 wrangler.toml 的 MAIL_DOMAIN 中添加</div>';
+    return;
+  }
+
+  els.domainsList.innerHTML = list.map(item => `
+    <div class="domain-item" data-domain="${item.domain}" draggable="true">
+      <span class="drag-handle" title="拖拽排序">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="8" y1="6" x2="8" y2="6"/><line x1="16" y1="6" x2="16" y2="6"/>
+          <line x1="8" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="16" y2="12"/>
+          <line x1="8" y1="18" x2="8" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/>
+          <circle cx="8" cy="6" r="1.2" fill="currentColor"/><circle cx="16" cy="6" r="1.2" fill="currentColor"/>
+          <circle cx="8" cy="12" r="1.2" fill="currentColor"/><circle cx="16" cy="12" r="1.2" fill="currentColor"/>
+          <circle cx="8" cy="18" r="1.2" fill="currentColor"/><circle cx="16" cy="18" r="1.2" fill="currentColor"/>
+        </svg>
+      </span>
+      <div class="domain-info">
+        <span class="domain-globe-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </span>
+        <span class="domain-name">${item.domain}</span>
+        <span class="domain-badge ${item.enabled ? 'badge-enabled' : 'badge-disabled'}">
+          ${item.enabled ? '已开启' : '已关闭'}
+        </span>
+      </div>
+      <label class="toggle-label domain-toggle" title="${item.enabled ? '点击关闭该域名' : '点击开启该域名'}">
+        <input type="checkbox" class="toggle-input domain-toggle-input" ${item.enabled ? 'checked' : ''} data-domain="${item.domain}" />
+        <span class="toggle-switch"></span>
+      </label>
+    </div>
+  `).join('');
+
+  // 绑定切换开关事件
+  els.domainsList.querySelectorAll('.domain-toggle-input').forEach(input => {
+    input.addEventListener('change', async () => {
+      const domain = input.dataset.domain;
+      const enabled = input.checked;
+      try {
+        await toggleDomain(domain, enabled);
+        showToast(`域名 ${domain} 已${enabled ? '开启' : '关闭'}`, 'success');
+        const item = input.closest('.domain-item');
+        const badge = item?.querySelector('.domain-badge');
+        if (badge) {
+          badge.className = `domain-badge ${enabled ? 'badge-enabled' : 'badge-disabled'}`;
+          badge.textContent = enabled ? '已开启' : '已关闭';
+        }
+        const toggleLabel = input.closest('.domain-toggle');
+        if (toggleLabel) toggleLabel.title = enabled ? '点击关闭该域名' : '点击开启该域名';
+      } catch (e) {
+        showToast('操作失败', 'error');
+        input.checked = !enabled;
+      }
+    });
+  });
+
+  // 绑定拖拽排序事件
+  initDomainDragSort(els.domainsList);
+}
+
+// 拖拽排序状态
+let _dragSrc = null;
+let _reorderTimer = null;
+
+function initDomainDragSort(container) {
+  container.querySelectorAll('.domain-item').forEach(item => {
+    item.addEventListener('dragstart', onDragStart);
+    item.addEventListener('dragend', onDragEnd);
+    item.addEventListener('dragover', onDragOver);
+    item.addEventListener('dragenter', onDragEnter);
+    item.addEventListener('dragleave', onDragLeave);
+    item.addEventListener('drop', onDrop);
+  });
+}
+
+function onDragStart(e) {
+  _dragSrc = e.currentTarget;
+  _dragSrc.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _dragSrc.dataset.domain);
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  els.domainsList?.querySelectorAll('.domain-item').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+  _dragSrc = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragEnter(e) {
+  const target = e.currentTarget;
+  if (target !== _dragSrc) target.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const target = e.currentTarget;
+  target.classList.remove('drag-over');
+  if (!_dragSrc || _dragSrc === target) return;
+
+  const container = target.parentNode;
+  const items = [...container.querySelectorAll('.domain-item')];
+  const srcIdx = items.indexOf(_dragSrc);
+  const tgtIdx = items.indexOf(target);
+
+  if (srcIdx < tgtIdx) {
+    container.insertBefore(_dragSrc, target.nextSibling);
+  } else {
+    container.insertBefore(_dragSrc, target);
+  }
+
+  // 防抖：拖拽停止 600ms 后自动保存
+  clearTimeout(_reorderTimer);
+  _reorderTimer = setTimeout(saveDomainOrder, 600);
+}
+
+async function saveDomainOrder() {
+  if (!els.domainsList) return;
+  const order = [...els.domainsList.querySelectorAll('.domain-item')].map(el => el.dataset.domain);
+  try {
+    await reorderDomains(order);
+    showToast('排序已保存', 'success');
+  } catch (e) {
+    showToast('排序保存失败', 'error');
+  }
+}
+
+els.domainsRefresh?.addEventListener('click', loadDomains);
+
 // 初始化
 loadUsers();
+loadDomains();

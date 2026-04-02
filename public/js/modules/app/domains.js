@@ -63,39 +63,44 @@ export async function loadDomains(selectElement, api) {
     populateDomains(['example.com'], selectElement);
     return;
   }
-  
-  let domainSet = false;
-  
-  // 尝试从缓存加载
+
+  // 优先从 API 加载最新的已启用域名列表（不使用缓存，确保停用域名立即生效）
+  // API 请求成功（无论返回空数组还是非空数组）都信任结果，不降级到旧数据
+  let apiSuccess = false;
   try {
-    const cached = cacheGet('domains', 24 * 60 * 60 * 1000);
+    const r = await api('/api/domains');
+    if (r.ok) {
+      const domainList = await r.json();
+      if (Array.isArray(domainList)) {
+        populateDomains(domainList, selectElement);
+        apiSuccess = true;
+      }
+    }
+  } catch(_) {}
+
+  if (apiSuccess) return;
+
+  // 仅在 API 请求失败时降级（网络错误等），不因为空列表而降级
+  let domainSet = false;
+
+  try {
+    const cached = cacheGet('domains', 5 * 60 * 1000); // 降级缓存最多 5 分钟
     if (Array.isArray(cached) && cached.length) {
       populateDomains(cached, selectElement);
       domainSet = true;
     }
   } catch(_) {}
-  
-  // 尝试从预取加载
-  try {
-    const prefetched = readPrefetch('mf:prefetch:domains');
-    if (Array.isArray(prefetched) && prefetched.length) {
-      populateDomains(prefetched, selectElement);
-      domainSet = true;
-    }
-  } catch(_) {}
-  
-  // 从 API 加载
-  try {
-    const r = await api('/api/domains');
-    const domainList = await r.json();
-    if (Array.isArray(domainList) && domainList.length) {
-      populateDomains(domainList, selectElement);
-      cacheSet('domains', domainList);
-      domainSet = true;
-    }
-  } catch(_) {}
-  
-  // 降级处理
+
+  if (!domainSet) {
+    try {
+      const prefetched = readPrefetch('mf:prefetch:domains');
+      if (Array.isArray(prefetched) && prefetched.length) {
+        populateDomains(prefetched, selectElement);
+        domainSet = true;
+      }
+    } catch(_) {}
+  }
+
   if (!domainSet) {
     const meta = (document.querySelector('meta[name="mail-domains"]')?.getAttribute('content') || '')
       .split(',').map(s => s.trim()).filter(Boolean);

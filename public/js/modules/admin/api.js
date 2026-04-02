@@ -119,6 +119,51 @@ export async function unassignMailbox(username, address) {
   });
 }
 
+/**
+ * 获取域名列表及启用状态
+ * @returns {Promise<Array<{domain: string, enabled: boolean}>>}
+ */
+export async function getDomains() {
+  const r = await api('/api/admin/domains');
+  if (!r.ok) throw new Error('获取域名列表失败');
+  return r.json();
+}
+
+/**
+ * 切换域名启用/关闭状态
+ * @param {string} domain - 域名
+ * @param {boolean} enabled - 是否启用
+ * @returns {Promise<void>}
+ */
+export async function toggleDomain(domain, enabled) {
+  const r = await api('/api/admin/domains/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domain, enabled })
+  });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data.error || '操作失败');
+  }
+}
+
+/**
+ * 保存域名排序结果
+ * @param {string[]} order - 排序后的域名数组
+ * @returns {Promise<void>}
+ */
+export async function reorderDomains(order) {
+  const r = await api('/api/admin/domains/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order })
+  });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data.error || '排序保存失败');
+  }
+}
+
 export default {
   api,
   getUsers,
@@ -127,5 +172,8 @@ export default {
   deleteUser,
   getUserMailboxes,
   assignMailbox,
-  unassignMailbox
+  unassignMailbox,
+  getDomains,
+  toggleDomain,
+  reorderDomains
 };

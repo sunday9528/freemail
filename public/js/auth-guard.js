@@ -25,7 +25,14 @@ try{
       const opts = { method: 'GET', headers: { 'Cache-Control': 'no-cache' }, keepalive: true, signal: controller.signal };
       const mailboxes = fetch('/api/mailboxes?limit=10&offset=0', opts).then(r => r.ok ? r.json() : { list: [] }).then(data => save('mf:prefetch:mailboxes', Array.isArray(data) ? data : (data.list || []) )).catch(()=>{});
       const quota = fetch('/api/user/quota', opts).then(r => r.ok ? r.json() : null).then(data => { if (data) save('mf:prefetch:quota', data); }).catch(()=>{});
-      const domains = fetch('/api/domains', opts).then(r => r.ok ? r.json() : []).then(list => { if (Array.isArray(list) && list.length) save('mf:prefetch:domains', list); }).catch(()=>{});
+      const domains = fetch('/api/domains', opts).then(r => r.ok ? r.json() : null).then(list => {
+        if (!Array.isArray(list)) return; // 请求失败，不动缓存
+        if (list.length) {
+          save('mf:prefetch:domains', list); // 有数据，更新缓存
+        } else {
+          try { sessionStorage.removeItem('mf:prefetch:domains'); } catch(_) {} // 空列表，清除旧缓存
+        }
+      }).catch(()=>{});
       // 不阻塞太久：最多等待 800ms 即跳转，其余继续后台完成（keepalive）
       await Promise.race([
         Promise.all([mailboxes, quota, domains]),

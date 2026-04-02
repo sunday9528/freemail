@@ -14,6 +14,7 @@ import {
   assignMailboxToUser
 } from '../db/index.js';
 import { handleMailboxAdminApi } from './mailboxAdmin.js';
+import { isDomainEnabled } from './domains.js';
 
 /**
  * 处理邮箱管理相关 API
@@ -28,30 +29,55 @@ import { handleMailboxAdminApi } from './mailboxAdmin.js';
 export async function handleMailboxesApi(request, db, mailDomains, url, path, options) {
   const isMock = !!options.mockOnly;
 
+  // 所有配置的域名（原始列表，用于合法性校验）
   const domains = isMock
     ? MOCK_DOMAINS
     : (Array.isArray(mailDomains) ? mailDomains : [(mailDomains || 'temp.example.com')])
       .map(normalizeDomain)
       .filter(Boolean);
 
-  // 返回域名列表给前端
+  // 已启用的域名（用于创建邮箱和前端展示），按 sort_order 排序
+  const getEnabledDomains = async () => {
+    if (isMock) return MOCK_DOMAINS;
+    try {
+      const { results: dbRows } = await db.prepare(
+        'SELECT domain, enabled, sort_order FROM domains ORDER BY sort_order ASC, id ASC'
+      ).all();
+      const dbMap = new Map((dbRows || []).map(r => [r.domain, r]));
+      // 按数据库排序的顺序输出，未在 db 中的域名按原始顺序排在末尾
+      const dbOrdered = (dbRows || []).map(r => r.domain).filter(d => domains.includes(d) && !!dbRows.find(x => x.domain === d)?.enabled);
+      const newEnabled = domains.filter(d => !dbMap.has(d)); // 无记录默认启用
+      return [...dbOrdered, ...newEnabled];
+    } catch (_) {
+      return domains;
+    }
+  };
+
+  // 返回域名列表给前端（只返回已启用的域名）
   if (path === '/api/domains' && request.method === 'GET') {
     if (isMock) return Response.json(MOCK_DOMAINS);
-    return Response.json(domains);
+    return Response.json(await getEnabledDomains());
   }
 
   // 随机生成邮箱
   if (path === '/api/generate') {
+    const enabledDomains = await getEnabledDomains();
     const lengthParam = Number(url.searchParams.get('length') || 0);
     const randomId = generateRandomId(lengthParam || undefined);
     const requestedDomain = normalizeDomain(url.searchParams.get('domain') || '');
-    const domainIdx = Math.max(0, Math.min(domains.length - 1, Number(url.searchParams.get('domainIndex') || 0)));
-    const chosenDomain = requestedDomain && isAllowedDomain(requestedDomain, domains)
+    // domainIndex 对应已启用列表的索引
+    const domainIdx = Math.max(0, Math.min(enabledDomains.length - 1, Number(url.searchParams.get('domainIndex') || 0)));
+    const chosenDomain = requestedDomain && isAllowedDomain(requestedDomain, enabledDomains)
       ? requestedDomain
-      : (domains[domainIdx] || domains[0]);
+      : (enabledDomains[domainIdx] || enabledDomains[0]);
     const email = `${randomId}@${chosenDomain}`;
-    
+
     if (!isMock) {
+      if (!chosenDomain) return errorResponse('当前无可用域名，请联系管理员开启域名', 403);
+      // 已通过 enabledDomains 过滤，此处无需再查数据库，但保留兜底检查
+      if (!await isDomainEnabled(db, chosenDomain)) {
+        return errorResponse('该域名当前已停用，无法创建邮箱', 403);
+      }
       try {
         const payload = getJwtPayload(request, options);
         if (payload?.userId) {
@@ -115,16 +141,22 @@ export async function handleMailboxesApi(request, db, mailDomains, url, path, op
 
       const valid = /^[a-z0-9._-]{1,64}$/i.test(local);
       if (!valid) return errorResponse('非法用户名', 400);
-      const domainIdx = Math.max(0, Math.min(domains.length - 1, Number(body.domainIndex || 0)));
-      const chosenDomain = requestedDomain && isAllowedDomain(requestedDomain, domains)
+      // domainIndex 对应已启用列表的索引，需先获取已启用列表
+      const enabledDomainsForCreate = await getEnabledDomains();
+      const domainIdx = Math.max(0, Math.min(enabledDomainsForCreate.length - 1, Number(body.domainIndex || 0)));
+      // 如果 requestedDomain 指定，需要在已启用列表中验证（同时也在全量列表中）
+      const chosenDomain = requestedDomain && isAllowedDomain(requestedDomain, enabledDomainsForCreate)
         ? requestedDomain
-        : (domains[domainIdx] || domains[0]);
-      if (!chosenDomain) return errorResponse('未配置可用域名', 400);
+        : (enabledDomainsForCreate[domainIdx] || enabledDomainsForCreate[0]);
+      if (!chosenDomain) return errorResponse('当前无可用域名，请联系管理员开启域名', 403);
       if (requestedDomain && !isAllowedDomain(requestedDomain, domains)) {
         return errorResponse('域名不在允许范围内', 400);
       }
+      if (requestedDomain && !isAllowedDomain(requestedDomain, enabledDomainsForCreate)) {
+        return errorResponse('该域名当前已停用，无法创建邮箱', 403);
+      }
       const email = `${local}@${chosenDomain}`;
-      
+
       try {
         const payload = getJwtPayload(request, options);
         const userId = payload?.userId;

@@ -939,3 +939,134 @@
 .loading-indicator-sm {
   margin: 4px 0 8px 0;
 }
+
+/* ===========================================
+   域名管理面板
+   =========================================== */
+.domain-manage-card {
+  margin-bottom: 0;
+}
+
+.domain-help-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  padding: 8px 0 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  margin-bottom: 8px;
+}
+
+.domains-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.domain-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 10px;
+  transition: var(--admin-transition);
+  cursor: default;
+}
+
+.domain-item:hover {
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 2px 8px rgba(124,58,237,0.08);
+}
+
+/* 拖拽把手 */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 0;
+  color: #cbd5e1;
+  cursor: grab;
+  flex-shrink: 0;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.domain-item:hover .drag-handle {
+  color: #94a3b8;
+}
+
+/* 拖拽中的元素 */
+.domain-item.dragging {
+  opacity: 0.45;
+  background: rgba(124,58,237,0.06);
+  border-color: rgba(124,58,237,0.25);
+  box-shadow: 0 4px 16px rgba(124,58,237,0.15);
+  cursor: grabbing;
+}
+
+/* 放置目标高亮 */
+.domain-item.drag-over {
+  background: rgba(124,58,237,0.07);
+  border-color: rgba(124,58,237,0.4);
+  box-shadow: 0 0 0 2px rgba(124,58,237,0.2);
+  transform: scale(1.01);
+}
+
+.domain-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.domain-globe-icon {
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+}
+
+.domain-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  font-family: 'Courier New', monospace;
+}
+
+.domain-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.badge-enabled {
+  background: rgba(16,185,129,0.12);
+  color: #059669;
+  border: 1px solid rgba(16,185,129,0.25);
+}
+
+.badge-disabled {
+  background: rgba(239,68,68,0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239,68,68,0.2);
+}
+
+.domain-toggle {
+  margin: 0;
+  cursor: pointer;
+}
+
+.domain-empty {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+

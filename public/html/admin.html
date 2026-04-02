@@ -143,6 +143,40 @@
         </div>
       </div>
 
+      <!-- 域名管理面板 -->
+      <div class="card domain-manage-card">
+        <div class="card-header">
+          <h2>
+            <span class="card-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </span>
+            <span>域名管理</span>
+          </h2>
+          <button id="domains-refresh" class="btn btn-ghost btn-icon" title="刷新域名列表" aria-label="刷新">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <use href="/icons/sprites.svg#icon-refresh"/>
+            </svg>
+          </button>
+        </div>
+        <div class="domain-help-text">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          只有已开启的域名才能用于创建临时邮箱；关闭后该域名将无法创建新邮箱
+        </div>
+        <div id="domains-loading" class="loading-indicator loading-indicator-sm">
+          <div class="spinner"></div>
+          <span>加载中…</span>
+        </div>
+        <div id="domains-list" class="domains-list"></div>
+      </div>
+
       <!-- 主内容区域 -->
       <div class="admin-main">
         <div class="admin-left">

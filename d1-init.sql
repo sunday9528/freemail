@@ -106,3 +106,17 @@ CREATE TABLE IF NOT EXISTS sent_emails (
 CREATE INDEX IF NOT EXISTS idx_sent_emails_resend_id      ON sent_emails(resend_id);
 CREATE INDEX IF NOT EXISTS idx_sent_emails_status_created ON sent_emails(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sent_emails_from_addr      ON sent_emails(from_addr);
+
+-- ────────────────────────────────────────
+-- 域名管理表（控制哪些域名可用于创建邮箱）
+-- ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS domains (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  domain     TEXT    NOT NULL UNIQUE,
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_domains_domain  ON domains(domain);
+CREATE INDEX IF NOT EXISTS idx_domains_enabled ON domains(enabled);
