@@ -9,55 +9,63 @@
 `转发的地址需要在cloudflare Email Addresses中验证`
 
 📖 **[一键部署指南](docs/yijianbushu.md)** | 📬 **[Resend 发件配置](docs/resend.md)** | 📚 **[API 文档](docs/api.md)**
+cd e:/workgit/Sunday/freemail && wrangler deploy 2>&1
 
 ## 📸 项目展示
+
 ### 体验地址： https://mailexhibit.dinging.top/
 
 ### 体验账号： guest
+
 ### 体验密码： guest
+
 ### 页面展示
 
 #### 首页
+
 ![首页展示](./pic/light/shouye.png)
 
 #### 所有邮箱
+
 ![所有邮箱](./pic/light/suoyouyouxiang.png)
 
 #### 用户管理
+
 ![用户管理](./pic/light/yonghuguanli.png)
 
 #### 单个邮箱登录
+
 ![单个邮箱登录](./pic/dange邮箱登录.png)
 
 #### [浅色模式展示](docs/zhanshi-light.md) | [深色模式展示](docs/zhanshi-dark.md)
 
 ## 功能特性
 
-| 类别 | 特性 |
-|------|------|
+| 类别            | 特性                                                            |
+| --------------- | --------------------------------------------------------------- |
 | 📧 **邮箱管理** | 随机生成临时邮箱 · 多域名支持 · 置顶/收藏 · 历史记录 · 邮箱搜索 |
-| 💌 **邮件功能** | 实时接收 · 自动刷新 · 验证码智能提取 · HTML/纯文本 · 邮件转发 |
-| ✉️ **发件支持** | Resend API 集成 · 多域名密钥 · 批量发送 · 定时发送 · 发件记录 |
-| 👥 **用户管理** | 三层权限模型 · 用户/邮箱分配 · 邮箱单点登录 · 登录权限控制 |
-| 🎨 **现代界面** | 毛玻璃效果 · 响应式设计 · 移动端适配 · 列表/卡片视图 |
-| ⚡ **技术架构** | Cloudflare Workers · D1 数据库 · R2 存储 · Email Routing |
+| 💌 **邮件功能** | 实时接收 · 自动刷新 · 验证码智能提取 · HTML/纯文本 · 邮件转发   |
+| ✉️ **发件支持** | Resend API 集成 · 多域名密钥 · 批量发送 · 定时发送 · 发件记录   |
+| 👥 **用户管理** | 三层权限模型 · 用户/邮箱分配 · 邮箱单点登录 · 登录权限控制      |
+| 🎨 **现代界面** | 毛玻璃效果 · 响应式设计 · 移动端适配 · 列表/卡片视图            |
+| ⚡ **技术架构** | Cloudflare Workers · D1 数据库 · R2 存储 · Email Routing        |
 
 > 💡 邮箱用户自行修改密码功能默认关闭，如需开启请将 `mailbox.html` 第 77-80 行取消注释。
 
 ## 版本历史
 
-| 版本 | 主要更新 |
-|------|----------|
+| 版本       | 主要更新                                                 |
+| ---------- | -------------------------------------------------------- |
 | **V5.1.1** | 邮箱别名规范化支持扩展 · 支持 `.` `+` `-` 三种分隔符切分 |
-| **V5.1** | 邮箱别名规范化支持 · xx.abc@ex.co 邮件会收到 abc@ex.co |
-| **V5.0** | 全新 UI · SVG 图标 · 深色模式 · 管理面板统计与布局优化 |
-| **V4.8** | 单个邮箱转发 · 收藏功能 · 按状态筛选 |
-| **V4.5** | 多域名 Resend 密钥配置 |
-| **V4.0** | 邮箱地址单点登录 · 全局邮箱管理 · 邮箱搜索 |
-| **V3.5** | 数据库优化 · R2 存储 EML · 移动端适配 |
-| **V3.0** | 三层权限模型 · 用户管理后台 |
-| **V2.0** | Resend 发件集成 · 邮箱置顶 |
-| **V1.0** | 邮箱生成 · 邮件接收 · 验证码提取 |
+| **V5.1**   | 邮箱别名规范化支持 · xx.abc@ex.co 邮件会收到 abc@ex.co   |
+| **V5.0**   | 全新 UI · SVG 图标 · 深色模式 · 管理面板统计与布局优化   |
+| **V4.8**   | 单个邮箱转发 · 收藏功能 · 按状态筛选                     |
+| **V4.5**   | 多域名 Resend 密钥配置                                   |
+| **V4.0**   | 邮箱地址单点登录 · 全局邮箱管理 · 邮箱搜索               |
+| **V3.5**   | 数据库优化 · R2 存储 EML · 移动端适配                    |
+| **V3.0**   | 三层权限模型 · 用户管理后台                              |
+| **V2.0**   | Resend 发件集成 · 邮箱置顶                               |
+| **V1.0**   | 邮箱生成 · 邮件接收 · 验证码提取                         |
 
 ## 部署配置
 
@@ -71,16 +79,16 @@
 
 ### 环境变量
 
-| 变量名 | 说明 | 必需 |
-|--------|------|------|
-| TEMP_MAIL_DB | D1 数据库绑定 | 是 |
-| MAIL_EML | R2 存储桶绑定 | 是 |
-| MAIL_DOMAIN | 邮箱域名，多个用逗号分隔 | 是 |
-| ADMIN_PASSWORD | 严格管理员密码 | 是 |
-| ADMIN_NAME | 严格管理员用户名（默认 `admin`） | 否 |
-| JWT_TOKEN | JWT 签名密钥 | 是 |
-| RESEND_API_KEY | Resend 发件密钥，支持多域名配置 | 否 |
-| FORWARD_RULES | 邮件转发规则 | 否 |
+| 变量名         | 说明                             | 必需 |
+| -------------- | -------------------------------- | ---- |
+| TEMP_MAIL_DB   | D1 数据库绑定                    | 是   |
+| MAIL_EML       | R2 存储桶绑定                    | 是   |
+| MAIL_DOMAIN    | 邮箱域名，多个用逗号分隔         | 是   |
+| ADMIN_PASSWORD | 严格管理员密码                   | 是   |
+| ADMIN_NAME     | 严格管理员用户名（默认 `admin`） | 否   |
+| JWT_TOKEN      | JWT 签名密钥                     | 是   |
+| RESEND_API_KEY | Resend 发件密钥，支持多域名配置  | 否   |
+| FORWARD_RULES  | 邮件转发规则                     | 否   |
 
 <details>
 <summary><strong>RESEND_API_KEY 配置格式</strong></summary>
@@ -97,6 +105,7 @@ RESEND_API_KEY='{"domain1.com":"re_key1","domain2.com":"re_key2"}'
 ```
 
 系统会根据发件人域名自动选择对应的 API 密钥。
+
 </details>
 
 <details>
@@ -105,6 +114,7 @@ RESEND_API_KEY='{"domain1.com":"re_key1","domain2.com":"re_key2"}'
 规则按前缀匹配，`*` 为兜底规则。
 
 ⚠️ **重要**：转发目标邮箱必须在 Cloudflare 控制台中验证后才能使用：
+
 1. 进入 Cloudflare 控制台 → 域名 → 电子邮件 → 电子邮件路由
 2. 切换到「目标地址」选项卡
 3. 点击「添加目标地址」，输入转发目标邮箱
@@ -122,6 +132,7 @@ FORWARD_RULES='[{"prefix":"vip","email":"a@example.com"},{"prefix":"*","email":"
 # 禁用转发
 FORWARD_RULES="" 或 "disabled" 或 "none"
 ```
+
 </details>
 
 ## 故障排除
@@ -148,6 +159,7 @@ wrangler tail
 # 检查数据库
 wrangler d1 execute TEMP_MAIL_DB --command "SELECT * FROM mailboxes LIMIT 10"
 ```
+
 </details>
 
 ## 注意事项
